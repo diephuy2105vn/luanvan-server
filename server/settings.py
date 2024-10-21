@@ -2,8 +2,10 @@ import enum
 from pathlib import Path
 from tempfile import gettempdir
 
+import dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+dotenv.load_dotenv()
 TEMP_DIR = Path(gettempdir())
 
 
@@ -11,8 +13,8 @@ class LogLevel(str, enum.Enum):  # noqa: WPS600
     """Possible log levels."""
 
     NOTSET = "NOTSET"
-    DEBUG = "DEBUG"
     INFO = "INFO"
+    DEBUG = "DEBUG"
     WARNING = "WARNING"
     ERROR = "ERROR"
     FATAL = "FATAL"
@@ -30,8 +32,17 @@ class Settings(BaseSettings):
     port: int = 8000
     # quantity of workers for uvicorn
     workers_count: int = 1
+
     # Enable uvicorn reloading
     reload: bool = False
+    openai_api_key: str
+    mongodb_url: str = "mongodb://localhost:27017/"
+    milvus_db_username: str = "root"
+    milvus_db_password: str = ""
+    milvus_db_host: str = "localhost"
+    milvus_db_port: int = 19530
+    milvus_db_name: str = "default"
+    milvus_db_collection: str = "project_collection"
 
     # Current environment
     environment: str = "dev"
@@ -39,7 +50,7 @@ class Settings(BaseSettings):
     log_level: LogLevel = LogLevel.INFO
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file="./env",
         env_prefix="SERVER_",
         env_file_encoding="utf-8",
     )
