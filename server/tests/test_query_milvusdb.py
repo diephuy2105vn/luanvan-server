@@ -3,14 +3,14 @@ import json
 from dotenv import load_dotenv
 from pymilvus import (
     Collection,
-    connections,
-    utility,
-    FieldSchema,
     CollectionSchema,
     DataType,
+    FieldSchema,
+    connections,
+    utility,
 )
-from server.settings import settings
 
+from server.settings import settings
 
 load_dotenv()
 

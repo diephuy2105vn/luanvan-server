@@ -25,7 +25,6 @@ from server.services.file_service import (
     insert_file,
 )
 from server.types.common import ListDataResponse, User
-from server.web.api.package.schema import Package
 
 from .schema import Doc
 from .schema import FileResponse as FileResSchema
@@ -56,13 +55,13 @@ async def get_files(
                 "$match": {
                     "owner": current_user.id,
                     "disabled": False,
-                }
+                },
             },
             {
                 "$group": {
                     "_id": None,
                     "total_size": {"$sum": "$size"},
-                }
+                },
             },
         ]
         result = await files_collection.aggregate(pipeline).to_list(length=1)
@@ -109,13 +108,13 @@ async def get_files(
                 "$match": {
                     "owner": current_user.id,
                     "disabled": True,
-                }
+                },
             },
             {
                 "$group": {
                     "_id": None,
                     "total_size": {"$sum": "$size"},
-                }
+                },
             },
         ]
 

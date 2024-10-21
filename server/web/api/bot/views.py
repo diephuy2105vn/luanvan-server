@@ -16,7 +16,6 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
-from pymongo import DESCENDING
 
 from server.config.logging import logging
 from server.config.mongodb import get_db
@@ -29,7 +28,6 @@ from server.web.api.chat_history.service import delete_messages_by_list_id
 from server.web.api.file.schema import FileSchema
 from server.web.api.notification.service import send_notification_bot_invite
 from server.web.api.user.schema import UserResponse
-
 
 from .schema import (
     Bot,
@@ -688,14 +686,14 @@ async def get_list_file(
                         ObjectId(file_id)
                         for file_id in existing_bot.get("list_files", [])
                     ],
-                }
-            }
+                },
+            },
         },
         {
             "$group": {
                 "_id": None,
                 "total_size": {"$sum": "$size"},  # Tổng kích thước
-            }
+            },
         },
     ]
 

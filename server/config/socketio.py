@@ -179,7 +179,9 @@ class SocketIOApp:
                     return
 
                 answer = await fetch_answer_by_file_ids_and_chat_id(
-                    data.get("message"), file_ids, chat_history_id
+                    data.get("message"),
+                    file_ids,
+                    chat_history_id,
                 )
 
                 message = {"answer": answer.get("answer")}

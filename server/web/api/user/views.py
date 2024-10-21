@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Optional
 from uuid import uuid4
 
@@ -30,7 +30,8 @@ from server.services.auth import (
     get_user,
 )
 from server.types.common import ListDataResponse, Token, User
-from .schema import UserRegister, UserResponse, UserUpdate, UserPackageInfo
+
+from .schema import UserPackageInfo, UserRegister, UserResponse, UserUpdate
 
 router = APIRouter()
 
@@ -225,7 +226,7 @@ async def get_avatar(user_id: str):
 
 @router.get("/package_info", response_model=UserPackageInfo)
 async def get_package_info(
-    current_user: Annotated[User, Depends(get_current_active_user)]
+    current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     db = get_db()
     order_collection = db.get_collection("orders")
@@ -254,7 +255,7 @@ async def get_package_info(
         )
 
     existing_package = await package_collection.find_one(
-        {"_id": ObjectId(latest_order["package_id"])}
+        {"_id": ObjectId(latest_order["package_id"])},
     )
     if not existing_package:
         raise HTTPException(status_code=404, detail="Package not found")
@@ -271,7 +272,8 @@ async def get_package_info(
 
 @router.post("/buy_package/{package_id}", response_model=dict)
 async def buy_package(
-    current_user: Annotated[User, Depends(get_current_active_user)], package_id: str
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    package_id: str,
 ):
     db = get_db()
     package_collection = db.get_collection("packages")

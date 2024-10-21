@@ -1,20 +1,17 @@
 import asyncio
-
+import re
 from typing import List
+
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.question_answering import load_qa_chain
-from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
 from langchain.schema import Document
+from langchain_openai import ChatOpenAI
+from pymilvus.model.reranker import BGERerankFunction
+
 from server.config.logging import logging
 from server.config.milvusdb import get_milvusdb
 from server.settings import settings
-from langchain.prompts import ChatPromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from openai import OpenAI
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from pymilvus.model.reranker import BGERerankFunction
-
-import torch
-import re
 
 # model_name_or_path = "Alibaba-NLP/gte-multilingual-reranker-base"
 
@@ -25,13 +22,11 @@ import re
 
 
 async def fetch_answer_by_file_ids_and_chat_id(
-    query: str, file_ids: List[str], chat_id: str
+    query: str,
+    file_ids: List[str],
+    chat_id: str,
 ) -> dict:
-    from .file_service import (
-        get_similar_docs_by_file_ids,
-        insert_doc_by_qa_and_chat_id,
-        get_history_docs_by_chat_id,
-    )
+    from .file_service import get_similar_docs_by_file_ids, insert_doc_by_qa_and_chat_id
 
     try:
 
@@ -40,7 +35,9 @@ async def fetch_answer_by_file_ids_and_chat_id(
             raise Exception("Not connect milvus DB")
 
         similar_docs = await get_similar_docs_by_file_ids(
-            query=query, file_ids=file_ids, top_k=5
+            query=query,
+            file_ids=file_ids,
+            top_k=5,
         )
         # pairs = [(query, doc.page_content) for doc in similar_docs]
 
@@ -69,7 +66,7 @@ async def fetch_answer_by_file_ids_and_chat_id(
                     metadata={
                         "score": result.score,
                     },
-                )
+                ),
             )
 
         # history_docs = await get_history_docs_by_chat_id(
@@ -93,7 +90,7 @@ async def fetch_answer_by_file_ids_and_chat_id(
                 - Hạn chế nhắc lại thông tin trong lịch sử trò chuyện nếu người dùng không hỏi thêm.
             Câu hỏi hiện tại: {question}
             * Quan trọng nội dung trong cặp ngoặc <<>> là nội dung cần thay đổi
-            """
+            """,
         )
 
         chain = create_stuff_documents_chain(llm, prompt)
@@ -112,7 +109,9 @@ async def fetch_answer_by_file_ids_and_chat_id(
             message = {"answer": cleaned_text.strip()}
 
         asyncio.create_task(
-            insert_doc_by_qa_and_chat_id(question=query, answer=result, chat_id=chat_id)
+            insert_doc_by_qa_and_chat_id(
+                question=query, answer=result, chat_id=chat_id
+            ),
         )
 
         return message

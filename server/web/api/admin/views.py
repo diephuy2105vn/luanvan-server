@@ -1,21 +1,18 @@
 from datetime import datetime
 from typing import Annotated, Optional
-from uuid import uuid4
 
 from bson import ObjectId
-from fastapi import HTTPException, APIRouter, Depends, Query, status
-
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from server.config.mongodb import get_db
 from server.constants.common import Pagination
-from server.services.auth import (
-    get_current_active_admin,
-)
+from server.services.auth import get_current_active_admin
 from server.types.common import ListDataResponse, User
-from .schema import OrderResponse
+from server.web.api.chat_history.schema import ChatMessage
 from server.web.api.file.schema import FileSchema
 from server.web.api.user.schema import UserResponse
-from server.web.api.chat_history.schema import ChatMessage
+
+from .schema import OrderResponse
 
 router = APIRouter()
 
@@ -24,10 +21,12 @@ router = APIRouter()
 async def get_messages(
     current_admin: Annotated[User, Depends(get_current_active_admin)],
     start_date: Optional[datetime] = Query(
-        None, description="Start date to filter messages"
+        None,
+        description="Start date to filter messages",
     ),
     end_date: Optional[datetime] = Query(
-        None, description="End date to filter messages"
+        None,
+        description="End date to filter messages",
     ),
 ):
     db = get_db()
@@ -87,7 +86,7 @@ async def get_users(
 
         if latest_order:
             pack = await packages_collection.find_one(
-                {"_id": ObjectId(latest_order["package_id"])}
+                {"_id": ObjectId(latest_order["package_id"])},
             )
         else:
             pack = await packages_collection.find_one({"type": "PACKAGE_FREE"})
@@ -104,12 +103,16 @@ async def get_users(
 async def get_all_files(
     current_admin: Annotated[User, Depends(get_current_active_admin)],
     start_date: Optional[datetime] = Query(
-        None, description="Start date to filter files"
+        None,
+        description="Start date to filter files",
     ),
     end_date: Optional[datetime] = Query(None, description="End date to filter files"),
     page: int = Query(Pagination.PAGE_DEFAULT, ge=1, description="Page number"),
     size_page: int = Query(
-        Pagination.SIZE_PAGE_DEFAULT, ge=1, le=20, description="Page size"
+        Pagination.SIZE_PAGE_DEFAULT,
+        ge=1,
+        le=20,
+        description="Page size",
     ),
 ):
     try:
@@ -148,12 +151,16 @@ async def get_all_files(
 async def get_orders_by_date(
     current_admin: Annotated[User, Depends(get_current_active_admin)],
     start_date: Optional[datetime] = Query(
-        None, description="Start date to filter orders"
+        None,
+        description="Start date to filter orders",
     ),
     end_date: Optional[datetime] = Query(None, description="End date to filter orders"),
     page: int = Query(Pagination.PAGE_DEFAULT, ge=1, description="Page number"),
     size_page: int = Query(
-        Pagination.SIZE_PAGE_DEFAULT, ge=1, le=20, description="Page size"
+        Pagination.SIZE_PAGE_DEFAULT,
+        ge=1,
+        le=20,
+        description="Page size",
     ),
 ):
     db = get_db()
@@ -182,7 +189,7 @@ async def get_orders_by_date(
 
     for order in orders_data:
         package = await packages_collection.find_one(
-            {"_id": ObjectId(order["package_id"])}
+            {"_id": ObjectId(order["package_id"])},
         )
         order_responses.append(OrderResponse(**order, pack=package))
 

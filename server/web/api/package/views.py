@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from server.config.logging import logging
 from server.config.mongodb import get_db
-from server.services.auth import get_current_active_admin, get_current_active_user
+from server.services.auth import get_current_active_admin
 from server.types.common import ListDataResponse, User
 
 from .schema import Package, PackageCreate, PackageUpdate

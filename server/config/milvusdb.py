@@ -1,5 +1,3 @@
-from langchain_community.vectorstores import Milvus
-from langchain_openai import OpenAIEmbeddings
 from pymilvus import Collection, connections, utility
 
 from server.settings import settings

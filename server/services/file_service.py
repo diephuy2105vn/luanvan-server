@@ -1,28 +1,25 @@
 import asyncio
+import io
 import os
 from typing import List
 from uuid import uuid4
 
-from tqdm import tqdm
+import fitz
+import pytesseract
 from bson import ObjectId
 from fastapi import UploadFile
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema import Document
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from nltk.tokenize import sent_tokenize
+from PIL import Image
 from pymilvus import Collection
 from pymongo.collection import Collection
-from nltk.tokenize import sent_tokenize
+from sentence_transformers import SentenceTransformer
+
 from server.config.logging import logging
 from server.config.milvusdb import get_milvusdb
 from server.config.mongodb import get_db
-from server.settings import settings
 from server.web.api.file.schema import FileSchema, FileStatus
-from sentence_transformers import SentenceTransformer
-from openai import OpenAI
-from PIL import Image
-import pytesseract
-import fitz
-import io
 
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 model = SentenceTransformer("Alibaba-NLP/gte-multilingual-base", trust_remote_code=True)
@@ -192,7 +189,8 @@ async def merge_sentences_into_chunks(sentences, min_length=500, max_length=800)
             chunk_size = paragraph_length
         if paragraph_length > 0:
             ext_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size, chunk_overlap=50
+                chunk_size=chunk_size,
+                chunk_overlap=50,
             )
 
             chunks.extend(ext_splitter.split_text(paragraph))
@@ -221,7 +219,7 @@ async def insert_to_milvus_by_file(file, chunks, vectors):
                 "chat_id": "",
             }
             for i, (chunk, vector) in enumerate(zip(chunks, vectors))
-        ]
+        ],
     )
 
     db.load()
@@ -239,7 +237,7 @@ async def insert_to_milvus_by_chat_id(chunk, vector, chat_id):
             "chat_id": chat_id,
             "file_name": "",
             "file_id": "",
-        }
+        },
     )
     db.load()
 
@@ -295,7 +293,10 @@ async def text_to_vector(text):
 
 
 async def get_similar_docs_by_file_ids(
-    query: str, file_ids: List[str], top_k: int = 10, distance_threshold: float = 0.6
+    query: str,
+    file_ids: List[str],
+    top_k: int = 10,
+    distance_threshold: float = 0.6,
 ):
 
     try:
@@ -334,7 +335,7 @@ async def get_similar_docs_by_file_ids(
                             "file_id": file_id,
                             "distance": distance,
                         },
-                    )
+                    ),
                 )
 
         return docs
@@ -373,7 +374,7 @@ async def get_history_docs_by_chat_id(query: str, chat_id: str, top_k: int = 5):
                                 "file_id": file_id,
                                 "distance": distance,
                             },
-                        )
+                        ),
                     )
 
             for i, doc in enumerate(docs):

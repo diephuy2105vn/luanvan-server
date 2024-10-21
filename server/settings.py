@@ -5,7 +5,7 @@ from tempfile import gettempdir
 import dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-dotenv.load_dotenv()
+dotenv.load_dotenv()  # Load environment variables from .env file
 TEMP_DIR = Path(gettempdir())
 
 
@@ -50,8 +50,8 @@ class Settings(BaseSettings):
     log_level: LogLevel = LogLevel.INFO
 
     model_config = SettingsConfigDict(
-        env_file="./env",
-        env_prefix="SERVER_",
+        env_file=".env",  # Specify the .env file
+        env_prefix="SERVER_",  # Use prefix SERVER_ for env vars
         env_file_encoding="utf-8",
     )
 

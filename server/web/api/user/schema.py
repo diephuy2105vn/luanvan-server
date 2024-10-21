@@ -1,10 +1,11 @@
+from datetime import datetime
 from typing import Literal, Optional
 
+from bson import ObjectId
 from pydantic import BaseModel, EmailStr, Field
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
-from datetime import datetime
-from bson import ObjectId
+
 from server.web.api.package.schema import Package
 
 PyObjectId = Annotated[str, BeforeValidator(str)]

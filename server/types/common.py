@@ -4,8 +4,6 @@ from bson import ObjectId
 from pydantic import BaseModel, EmailStr, Field
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
-from datetime import datetime
-
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
