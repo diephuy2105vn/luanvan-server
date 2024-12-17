@@ -131,4 +131,4 @@ def drop_collection_data(collection_name):
 
 
 if __name__ == "__main__":
-    check_data("project_collection")
+    create_collection("project_collection")

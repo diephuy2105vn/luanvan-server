@@ -12,8 +12,9 @@ from server.services.openai_service import fetch_answer_by_file_ids_and_chat_id
 from server.web.api.chat_history.schema import ChatMessage
 from server.web.api.file.schema import FileStatus
 from server.web.api.notification.schema import Notification
-
-
+import asyncio
+import functools
+from datetime import datetime
 class ConnectedUser(BaseModel):
     sid: str
     user_id: str
@@ -150,13 +151,21 @@ class SocketIOApp:
                 chat_histories_collection = db.get_collection("chat_histories")
                 chat_messages_collection = db.get_collection("chat_messages")
                 bots_collection = db.get_collection("bots")
+                files_collection = db.get_collection("files")
+                order_collection = db.get_collection("orders")
+                package_collection = db.get_collection("packages")
+                   
 
                 session = await self.sio.get_session(sid)
+                logging.info(f"Session: {session}")
+
                 chat_history_id = session.get("chat_history_id")
                 bot_id = session.get("bot_id")
                 existing_chat = await chat_histories_collection.find_one(
                     {"_id": ObjectId(chat_history_id)},
                 )
+
+                
                 existing_bot = await bots_collection.find_one({"_id": ObjectId(bot_id)})
                 if existing_bot is None:
                     await self.sio.emit(
@@ -165,6 +174,7 @@ class SocketIOApp:
                         room=sid,
                     )
                     return
+                
                 file_ids = existing_bot.get("list_files", [])
                 if len(file_ids) <= 0:
                     await self.sio.emit(
@@ -177,12 +187,66 @@ class SocketIOApp:
                         room=sid,
                     )
                     return
+                
+                files = await files_collection.find({"_id": {"$in": [ObjectId(file_id) for file_id in file_ids]}}).to_list(length=None)
 
-                answer = await fetch_answer_by_file_ids_and_chat_id(
-                    data.get("message"),
-                    file_ids,
-                    chat_history_id,
+
+                today = datetime.now()
+
+                latest_order = await order_collection.find_one(
+                    {
+                        "user_id": existing_bot.get("owner"),
+                        "expiration_date": {"$gte": today},
+                    },
+                    sort=[("order_date", -1)],
                 )
+
+                if not latest_order:
+                    existing_package = await package_collection.find_one({"type": "PACKAGE_FREE"})
+
+                else: 
+                    existing_package = await package_collection.find_one(
+                    {"_id": ObjectId(latest_order["package_id"])},
+                )
+                    
+                if not existing_package:
+                    existing_package = await package_collection.find_one({"type": "PACKAGE_FREE"})
+
+                total_size = sum(file.get("size", 0) for file in files)
+                if existing_package.get("capacity_bot") < total_size:
+                    await self.sio.emit(
+                       "message",
+                        {
+                            "message": {
+                                "answer": "Dịch vụ đã hết hạn. Vui lòng nâng cấp để tiếp tục sử dụng tính năng của trợ lý AI.",
+                            },
+                        },
+                    )
+                    return
+                
+                bots= await bots_collection.find({"owner" : existing_bot.get("owner")}).to_list(length=None)
+
+                if(len(bots) > existing_package.get("numBot")) :
+                    await self.sio.emit(
+                       "message",
+                        {
+                            "message": {
+                                "answer": "Dịch vụ đã hết hạn. Vui lòng nâng cấp để tiếp tục sử dụng tính năng của trợ lý AI.",
+                            },
+                        },
+                    )
+                    return
+
+                loop = asyncio.get_event_loop()
+                answer =  await fetch_answer_by_file_ids_and_chat_id(
+                        query=data.get("message"),
+                        file_ids=file_ids,
+                        chat_id=chat_history_id,
+                        response_model=existing_bot.get("response_model")
+                )
+
+                
+                    
 
                 message = {"answer": answer.get("answer")}
                 suggest_question = answer.get("suggest_question")
@@ -198,6 +262,7 @@ class SocketIOApp:
                     source=None if not answer.get("source") else answer.get("source"),
                     chat_history_id=chat_history_id,
                 )
+
                 chat_message_result = await chat_messages_collection.insert_one(
                     new_chat_message.model_dump(by_alias=True, exclude=["id"]),
                 )

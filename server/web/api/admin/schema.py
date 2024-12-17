@@ -5,7 +5,7 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
-
+from server.web.api.user.schema import UserResponse
 from server.web.api.package.schema import Package
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -19,6 +19,7 @@ from pydantic import BaseModel
 class OrderResponse(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     user_id: str
+    user_info: Optional[UserResponse]
     package_id: str
     order_date: datetime
     expiration_date: datetime

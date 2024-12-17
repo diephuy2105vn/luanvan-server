@@ -31,7 +31,8 @@ class PackageUpdate(BaseModel):
     name: Optional[str] = None
     price: Optional[int] = None
     numBot: Optional[int] = None
-    capacity: Optional[int] = None
+    capacity_file: Optional[int] = None
+    capacity_bot: Optional[int] = None
 
 
 class PackageCreate(BaseModel):
@@ -39,4 +40,5 @@ class PackageCreate(BaseModel):
     name: str
     price: int
     numBot: int
-    capacity: int
+    capacity_file: int
+    capacity_bot: int

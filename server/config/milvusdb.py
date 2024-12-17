@@ -13,8 +13,7 @@ def get_milvusdb():
             port=settings.milvus_db_port,
             db_name="default",
         )
-        print(utility.list_collections())
-        print(settings.milvus_db_collection)
+
         if utility.has_collection(settings.milvus_db_collection):
             return Collection(settings.milvus_db_collection)
 

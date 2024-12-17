@@ -35,27 +35,33 @@ router = APIRouter()
 
 @router.get("/", response_model=ListDataResponse[FileSchema])
 async def get_files(
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User , Depends(get_current_active_user)],
     page: int = Query(Pagination.PAGE_DEFAULT, ge=1, description="Page number"),
-    size_page: int = Query(
+    size_page: int = Query( 
         Pagination.SIZE_PAGE_DEFAULT,
         ge=1,
         le=20,
         description="Page size",
     ),
+    name: str = Query(None, description="Name of the file to search for") 
 ):
     try:
         files_collection: Collection = get_db().get_collection("files")
-        total_files = await files_collection.count_documents(
-            {"owner": current_user.id, "disabled": False},
-        )
+
+        search_query = {
+            "owner": current_user.id,
+            "disabled": False,
+        }
+
+       
+        if name:
+            search_query["name"] = {"$regex": name, "$options": "i"}  
+
+        total_files = await files_collection.count_documents(search_query)
 
         pipeline = [
             {
-                "$match": {
-                    "owner": current_user.id,
-                    "disabled": False,
-                },
+                "$match": search_query,
             },
             {
                 "$group": {
@@ -68,7 +74,7 @@ async def get_files(
         total_size = result[0]["total_size"] if result else 0
 
         files = (
-            await files_collection.find({"owner": current_user.id, "disabled": False})
+            await files_collection.find(search_query)
             .skip((page - 1) * size_page)
             .limit(size_page)
             .to_list(length=None)
@@ -150,9 +156,8 @@ async def get_file(
         file = await files_collection.find_one(
             {"owner": current_user.id, "_id": ObjectId(file_id)},
         )
-        docs = get_docs_by_file_id(file_id)
+        # docs = get_docs_by_file_id(file_id)
         file_res = FileResSchema(**file)
-        file_res.docs = [Doc(**doc) for doc in docs]
         return file_res
     except Exception as e:
         logging.error(e)
@@ -193,7 +198,7 @@ async def upload_files(
     current_user: Annotated[User, Depends(get_current_active_user)],
     files: List[UploadFile] = File(...),
 ):
-
+    
     inserted_files = []
 
     for file in files:
@@ -201,6 +206,36 @@ async def upload_files(
         inserted_files.append(inserted_file)
 
     return inserted_files
+
+
+@router.post("/restore/{file_id}", response_model=dict)
+async def delete_files(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    file_id: str,
+):
+    try:
+        files_collection = get_db().get_collection("files")
+        update_result = await files_collection.update_one(
+            {
+                "_id": ObjectId(file_id),
+                "owner": current_user.id,
+            },
+            {"$set": {"disabled": False}},
+        )
+
+        if update_result.modified_count > 0:
+            return {
+                "detail": f"Restore {update_result.modified_count} files successfully",
+            }
+        else:
+            return {"detail": "No file restore"}
+
+    except Exception as e:
+        logging.error(e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bad request",
+        )
 
 
 @router.delete("/list_id", response_model=dict)

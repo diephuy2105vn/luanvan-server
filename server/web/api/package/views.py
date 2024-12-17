@@ -13,7 +13,7 @@ from .schema import Package, PackageCreate, PackageUpdate
 router = APIRouter()
 
 
-@router.get("/", response_model=ListDataResponse[Package])
+@router.get("/", response_model=ListDataResponse[dict])
 async def get_package():
     db = get_db()
     package_collection = db.get_collection("packages")
@@ -21,15 +21,24 @@ async def get_package():
     existing_pacekages = (
         await package_collection.find().sort("price", 1).to_list(length=None)
     )
+    converted_packages = [
+    {
+        **package, 
+        "_id": str(package["_id"]) if "_id" in package else None
+    }
+        for package in existing_pacekages
+    ]
 
     return ListDataResponse(
         total=total_pacekages,
-        data=[Package(**package) for package in existing_pacekages],
+        data=converted_packages,
     )
+    
+    
 
 
-@router.post("/", response_model=Package)
-async def read_notification(
+@router.post("/", response_model=dict)
+async def create_package(
     current_admin: Annotated[User, Depends(get_current_active_admin)],
     new_package: PackageCreate,
 ):
@@ -43,11 +52,12 @@ async def read_notification(
     package_inserted = await package_collection.find_one(
         {"_id": package_result.inserted_id},
     )
+    if package_inserted:
+        package_inserted["_id"] = str(package_inserted["_id"])
+    return package_inserted
 
-    return Package(**package_inserted)
 
-
-@router.put("/{package_id}", response_model=Package)
+@router.put("/{package_id}", response_model=dict)
 async def update_package(
     package_id: str,
     package_update: PackageUpdate,
@@ -73,8 +83,9 @@ async def update_package(
         )
 
     updated_package = await package_collection.find_one({"_id": ObjectId(package_id)})
-
-    return Package(**updated_package)
+    if updated_package:
+        updated_package["_id"] = str(updated_package["_id"])
+    return updated_package
 
 
 @router.delete("/{package_id}", response_model=dict)

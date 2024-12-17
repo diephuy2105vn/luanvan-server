@@ -1,122 +1,122 @@
-# server
+# Dự án CodeChat
 
-This project was generated using fastapi_template.
+📆 **Mô tả:** Dự án Python sử dụng OpenAI API, cài đặt các thư viện bằng **Poetry** và khởi chạy server với **FastAPI**.
 
-## Poetry
+---
 
-This project uses poetry. It's a modern dependency management
-tool.
+## Yêu cầu hệ thống
 
-To run the project use this set of commands:
+-   **Python 3.8+**
+-   **Poetry** - Công cụ quản lý gói cho Python.
+
+## 1. Cài đặt Poetry
+
+Nếu bạn chưa cài đặt Poetry, bạn có thể cài đặt bằng lệnh:
+
+```bash
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
+🔍 Đảm bảo Poetry được cài đặt thành công:
+
+```bash
+poetry --version
+```
+
+## 2. Cấu hình API Key của OpenAI
+
+Tạo API Key trên trang OpenAI: [https://platform.openai.com](https://platform.openai.com/)
+
+Sau khi tạo xong, bạn tạo file `.env` trong thư mục gốc dự án và thêm API key của bạn như sau:
+
+```plaintext
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+> **Lưu ý:** Giữ API Key an toàn và không chia sẻ cho người khác.
+
+## 3. Cài đặt thư viện cần thiết
+
+Dùng Poetry để cài đặt các thư viện cần thiết cho dự án:
 
 ```bash
 poetry install
+```
+
+File `pyproject.toml` đã bao gồm các thư viện cần thiết như:
+
+-   **openai**: Sử dụng OpenAI API.
+-   **python-dotenv**: Để đọc file `.env` chứa API key.
+-   **fastapi**: Framework tạo API server.
+-   **uvicorn**: Chạy server.
+
+Nếu bạn cần thêm bất kỳ thư viện nào, sử dụng:
+
+```bash
+poetry add <tên-thư-viện>
+```
+
+## 4. Cấu hình env
+
+```plaintext
+SERVER_RELOAD="TRUE"
+SERVER_MONGODB_URL="mongodb://localhost:27017/"
+SERVER_MILVUS_DB_USERNAME="root"
+SERVER_MILVUS_DB_PASSWORD=""
+SERVER_MILVUS_DB_HOST="localhost"
+SERVER_MILVUS_DB_PORT=19530
+SERVER_MILVUS_DB_NAME="default"
+SERVER_MILVUS_DB_COLLECTION="your_collection_name"
+```
+
+## 5. Chạy server
+
+Khởi động server FastAPI bằng Poetry:
+
+```bash
 poetry run python -m server
 ```
 
-This will start the server on the configured host.
+Server sẽ khởi chạy và bạn có thể truy cập tại:
 
-You can find swagger documentation at `/api/docs`.
-
-You can read more about poetry here: https://python-poetry.org/
-
-## Docker
-
-You can start the project with docker using this command:
-
-```bash
-docker-compose -f deploy/docker-compose.yml --project-directory . up --build
+```
+http://127.0.0.1:8000
 ```
 
-If you want to develop in docker with autoreload add `-f deploy/docker-compose.dev.yml` to your docker command.
-Like this:
-
-```bash
-docker-compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml --project-directory . up --build
-```
-
-This command exposes the web application on port 8000, mounts current directory and enables autoreload.
-
-But you have to rebuild image every time you modify `poetry.lock` or `pyproject.toml` with this command:
-
-```bash
-docker-compose -f deploy/docker-compose.yml --project-directory . build
-```
-
-## Project structure
+## 6. Cấu trúc dự án
 
 ```bash
 $ tree "server"
 server
-├── conftest.py  # Fixtures for all tests.
-├── __main__.py  # Startup script. Starts uvicorn.
-├── services  # Package for different external services such as rabbit or redis etc.
-├── settings.py  # Main configuration settings for project.
-├── static  # Static content.
-├── tests  # Tests for project.
-└── web  # Package contains web server. Handlers, startup config.
-    ├── api  # Package with all handlers.
-    │   └── router.py  # Main router.
-    ├── application.py  # FastAPI application configuration.
-    └── lifetime.py  # Contains actions to perform on startup and shutdown.
+├── conftest.py  # Fixtures cho tất cả các bài kiểm tra.
+├── __main__.py  # Script khởi động, chạy uvicorn.
+├── services  # Thư mục chứa các dịch vụ bên ngoài như RabbitMQ, Redis, v.v.
+├── settings.py  # Cấu hình chính cho dự án.
+├── static  # Thư mục chứa các tài nguyên tĩnh.
+├── tests  # Thư mục chứa các bài kiểm tra cho dự án.
+└── web  # Thư mục chứa các thành phần web của server. Các handler, cấu hình khởi động.
+    ├── api  # Thư mục chứa tất cả các handler.
+    │   └── router.py  # Router chính của API.
+    ├── application.py  # Cấu hình ứng dụng FastAPI.
+    └── lifetime.py  # Các hành động thực hiện khi khởi động và tắt server.
 ```
 
-## Configuration
+## 7. Test API
 
-This application can be configured with environment variables.
+Sau khi server chạy, bạn có thể gửi yêu cầu đến API bằng công cụ như **Postman** hoặc **curl**.
 
-You can create `.env` file in the root directory and place all
-environment variables here.
-
-All environment variables should start with "SERVER_" prefix.
-
-For example if you see in your "server/settings.py" a variable named like
-`random_parameter`, you should provide the "SERVER_RANDOM_PARAMETER"
-variable to configure the value. This behaviour can be changed by overriding `env_prefix` property
-in `server.settings.Settings.Config`.
-
-An example of .env file:
-```bash
-SERVER_RELOAD="True"
-SERVER_PORT="8000"
-SERVER_ENVIRONMENT="dev"
-```
-
-You can read more about BaseSettings class here: https://pydantic-docs.helpmanual.io/usage/settings/
-
-## Pre-commit
-
-To install pre-commit simply run inside the shell:
-```bash
-pre-commit install
-```
-
-pre-commit is very useful to check your code before publishing it.
-It's configured using .pre-commit-config.yaml file.
-
-By default it runs:
-* black (formats your code);
-* mypy (validates types);
-* isort (sorts imports in all files);
-* flake8 (spots possible bugs);
-
-
-You can read more about pre-commit here: https://pre-commit.com/
-
-
-## Running tests
-
-If you want to run it in docker, simply run:
+Ví dụ: Gửi yêu cầu `GET` đến endpoint `/`
 
 ```bash
-docker-compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml --project-directory . run --build --rm api pytest -vv .
-docker-compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml --project-directory . down
+curl http://127.0.0.1:8000/
 ```
 
-For running tests on your local machine.
+Kết quả trả về:
 
-
-2. Run the pytest.
-```bash
-pytest -vv .
+```json
+{ "detail": "Welcome to chat bot server" }
 ```
+
+---
+
+🎉 **Chúc bạn thành công!** 🚀

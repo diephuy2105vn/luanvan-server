@@ -27,7 +27,7 @@ class UserResponse(BaseModel):
     phone_number: Optional[str]
     disabled: bool
     avatar_source: Optional[str] = None
-
+    pack: Optional[dict] = None
     class Config:
         json_encoders = {EmailStr: str, ObjectId: str}
 
@@ -44,3 +44,4 @@ class UserRegister(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
+    email: Optional[EmailStr] = None

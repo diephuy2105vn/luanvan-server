@@ -35,8 +35,7 @@ class FileSchema(BaseModel):
 
 
 class Doc(BaseModel):
-    id: int = Field(alias="pk", default=None)
-    source: str
+    id: int = Field(alias="id", default=None)
     text: str
     page: int
     file_id: str
@@ -54,7 +53,7 @@ class FileResponse(BaseModel):
     owner: Optional[str] = None
     owner_info: Optional[UserResponse] = None
     created_at: datetime
-    docs: List[Doc] = []
+    docs: Optional[List[Doc]] = None
     disabled: bool = False
 
     class Config:

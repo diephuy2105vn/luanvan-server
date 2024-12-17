@@ -4,25 +4,31 @@ import os
 from typing import List
 from uuid import uuid4
 
-import fitz
+import pymupdf
 import pytesseract
 from bson import ObjectId
 from fastapi import UploadFile
 from langchain.schema import Document
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from nltk.tokenize import sent_tokenize
 from PIL import Image
 from pymilvus import Collection
 from pymongo.collection import Collection
-from sentence_transformers import SentenceTransformer
 
 from server.config.logging import logging
 from server.config.milvusdb import get_milvusdb
 from server.config.mongodb import get_db
 from server.web.api.file.schema import FileSchema, FileStatus
 
-logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
-model = SentenceTransformer("Alibaba-NLP/gte-multilingual-base", trust_remote_code=True)
+from pymilvus import model
+import re
+
+sentence_transformer_ef = model.dense.SentenceTransformerEmbeddingFunction(
+    model_name='Alibaba-NLP/gte-multilingual-base',
+    device='cpu',
+    trust_remote_code=True
+)
+
 
 
 async def insert_file(file: UploadFile, user_id: str) -> FileSchema:
@@ -30,7 +36,7 @@ async def insert_file(file: UploadFile, user_id: str) -> FileSchema:
 
         files_collection: Collection = get_db().get_collection("files")
         file_name, file_extension = os.path.splitext(file.filename)
-
+    
         save_dir = os.path.join("server/stores/file/")
         os.makedirs(save_dir, exist_ok=True)
         file_uuid = uuid4()
@@ -105,106 +111,112 @@ async def delete_file_by_file_id(file_id: str, user_id: str) -> bool:
         logging.error(e)
         return False
 
-
-def clean_text(text):
-    try:
-        return text.encode("latin1").decode("utf-8")
-    except (UnicodeDecodeError, UnicodeEncodeError):
-        return text
+    
 
 
-def extract_text_from_pdf(pdf_path):
-    doc = fitz.open(pdf_path)
+async def extract_text_from_pdf(pdf_path):
+    loop = asyncio.get_event_loop()
+    text = await loop.run_in_executor(None, _extract_text_from_pdf, pdf_path)
+    return text
+
+def _extract_text_from_pdf(pdf_path):
+    doc = pymupdf.open(pdf_path)
     text = ""
     for page_num in range(doc.page_count):
         page = doc[page_num]
-        text += page.get_text()
+        text += " " + page.get_text()
     doc.close()
     return text
 
+async def extract_images_from_pdf(pdf_path):
+    loop = asyncio.get_event_loop()
+    images = await loop.run_in_executor(None, _extract_images_from_pdf, pdf_path)
+    return images
 
-def extract_images_from_pdf(pdf_path):
-    doc = fitz.open(pdf_path)
+def _extract_images_from_pdf(pdf_path):
+    doc = pymupdf.open(pdf_path)
     images = []
     for i in range(len(doc)):
         for img in doc.get_page_images(i):
-            xref = img[0]
-            base_image = doc.extract_image(xref)
+            base_image = doc.extract_image(img[0])
             images.append(base_image["image"])
-
     doc.close()
     return images
 
+async def ocr_from_images(images):
+    loop = asyncio.get_event_loop()
+    texts = await loop.run_in_executor(None, _ocr_from_images, images)
+    return texts
 
-def ocr_from_images(images):
+def _ocr_from_images(images):
     texts = []
-    try:
-        for img_data in images:
-            image = Image.open(io.BytesIO(img_data))
-            text = pytesseract.image_to_string(image, lang="vie")
-            texts.append(text)
-        return texts
-    except Exception as e:
-        return texts
-
+    for img_data in images:
+        image = Image.open(io.BytesIO(img_data))
+        text = pytesseract.image_to_string(image, lang="vie")
+        texts.append(text)
+    return texts
 
 async def extract_all_content(pdf_path):
-    text = extract_text_from_pdf(pdf_path)
-    images = extract_images_from_pdf(pdf_path)
-    ocr_texts = ocr_from_images(images)
+    text = await extract_text_from_pdf(pdf_path)
+    images = await extract_images_from_pdf(pdf_path)
+    ocr_texts = await ocr_from_images(images)
 
     all_text = text + "\n" + "\n".join(ocr_texts)
-    return clean_text(all_text)
+    return all_text
 
 
-async def merge_sentences_into_chunks(sentences, min_length=500, max_length=800):
+def merge_sentences_into_chunks(sentences, min_length=500, max_length=800):
     paragraphs = []
     current_sentence = ""
 
     for sentence in sentences:
-        sentence = sentence.strip().replace("\n", " ").replace("\r", " ")
-
         if len(current_sentence) < min_length:
             if current_sentence:
                 current_sentence += " " + sentence
             else:
                 current_sentence = sentence
         else:
-            paragraphs.append(current_sentence.strip())
+            paragraphs.append(current_sentence)
             current_sentence = sentence
 
     if current_sentence:
         if len(current_sentence) < min_length and paragraphs:
-            paragraphs[-1] += " " + current_sentence.strip()
+            paragraphs[-1] += " " + current_sentence
         else:
-            paragraphs.append(current_sentence.strip())
+            paragraphs.append(current_sentence)
 
     chunks = []
     for paragraph in paragraphs:
         paragraph_length = len(paragraph)
+        print(f"Paragraph lenght:  {paragraph_length}")
 
         if paragraph_length > max_length:
-            chunk_size = min_length
-        else:
-            chunk_size = paragraph_length
-        if paragraph_length > 0:
             ext_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
+                chunk_size=min_length,
                 chunk_overlap=50,
             )
-
             chunks.extend(ext_splitter.split_text(paragraph))
+        else:
+            chunks.append(paragraph)
+            
 
     return chunks
 
 
-async def split_content_to_sentences(content):
-    return sent_tokenize(content)
+def split_content_to_sentences(content):
+    content = content.strip().replace("\n", " ")
+    sentences = re.split(r'(?<=[.?!])\s', content)
+    return sentences
 
 
-async def model_encode(text):
-    return await model.encode(text)
+async def model_encode_text(text):
+    loop = asyncio.get_event_loop()
+    result =  await loop.run_in_executor(None, lambda: sentence_transformer_ef.encode_documents([text]))
+    return result[0]
 
+async def model_encode_texts(texts):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: sentence_transformer_ef.encode_documents(texts))
 
 async def insert_to_milvus_by_file(file, chunks, vectors):
     db = get_milvusdb()
@@ -216,7 +228,6 @@ async def insert_to_milvus_by_file(file, chunks, vectors):
                 "vector": vector,
                 "file_name": file.name,
                 "file_id": file.id,
-                "chat_id": "",
             }
             for i, (chunk, vector) in enumerate(zip(chunks, vectors))
         ],
@@ -234,7 +245,6 @@ async def insert_to_milvus_by_chat_id(chunk, vector, chat_id):
         {
             "text": chunk,
             "vector": vector,
-            "chat_id": chat_id,
             "file_name": "",
             "file_id": "",
         },
@@ -246,19 +256,21 @@ async def insert_to_milvus_by_chat_id(chunk, vector, chat_id):
 
 async def insert_docs(file: FileSchema):
     from server.config.socketio import socketio_app
-
     db = get_db()
     files_collection = db.get_collection("files")
 
     try:
-        document_content = await extract_all_content(file.path)
-        sentences = await split_content_to_sentences(document_content)
-        chunks = await merge_sentences_into_chunks(sentences)
+        
+        all_content = await extract_all_content(file.path) 
+        sentences =  split_content_to_sentences(all_content)
+        chunks =  merge_sentences_into_chunks(sentences)
 
-        vectors = [(await model_encode(chunk)).tolist() for chunk in chunks]
-
+        vectors = await model_encode_texts(chunks)
+        print(f"Tên file: {file.name} --- Số chunks {len(chunks)}")
+        for chunk in chunks: 
+            print(f"Chunk: {chunk}")
+            print(f"Length of chunk: {len(chunk)}\n")
         await insert_to_milvus_by_file(file, chunks, vectors)
-
         await files_collection.update_one(
             {"_id": ObjectId(file.id)},
             {"$set": {"status": FileStatus.success}},
@@ -270,6 +282,7 @@ async def insert_docs(file: FileSchema):
         )
 
     except Exception as e:
+        logging.error(e)
         await files_collection.update_one(
             {"_id": ObjectId(file.id)},
             {"$set": {"status": FileStatus.error}},
@@ -283,38 +296,32 @@ async def insert_docs(file: FileSchema):
 
 async def insert_doc_by_qa_and_chat_id(question, answer, chat_id):
     qa = f"Câu hỏi: {question}, Trả lời: {answer}"
-    vector = await model_encode(qa)
+    vector =await model_encode_text(qa)
     await insert_to_milvus_by_chat_id(qa, vector, chat_id)
 
-
-async def text_to_vector(text):
-    vector = await model.encode(text)
-    return vector.flatten().tolist()
 
 
 async def get_similar_docs_by_file_ids(
     query: str,
     file_ids: List[str],
-    top_k: int = 10,
-    distance_threshold: float = 0.6,
+    top_k: int = 5,
 ):
 
     try:
-
-        query_vector = await text_to_vector(query)
+        query_vector =await model_encode_text(query)
 
         db = get_milvusdb()
 
         file_ids_expr = ", ".join(f'"{file_id}"' for file_id in file_ids)
         search_results = None
-
+    
         search_results = db.search(
+            expr=f"file_id in [{file_ids_expr}]",
             output_fields=["id", "file_name", "file_id", "text"],
             data=[query_vector],
             anns_field="vector",
-            param={"metric_type": "COSINE", "nprobe": top_k * 2},
-            limit=top_k,
-            expr=f"file_id in [{file_ids_expr}]",
+            param={"metric_type": "COSINE" },
+            limit=5,
         )
 
         docs = []
@@ -325,8 +332,7 @@ async def get_similar_docs_by_file_ids(
                 file_name = hit.entity.get("file_name")
                 file_id = hit.entity.get("file_id")
                 distance = hit.distance
-                # if distance < distance_threshold:
-                #     continue
+                
                 docs.append(
                     Document(
                         text,
@@ -345,14 +351,14 @@ async def get_similar_docs_by_file_ids(
 
 async def get_history_docs_by_chat_id(query: str, chat_id: str, top_k: int = 5):
     try:
-        query_vector = await text_to_vector(query)
+        query_vector = await model_encode_text(query)
         db = get_milvusdb()
 
         search_results = db.search(
             output_fields=["id", "file_name", "file_id", "text"],
             data=[query_vector],
             anns_field="vector",
-            param={"metric_type": "COSINE", "nprobe": top_k * 2},
+            param={"metric_type": "COSINE",},
             limit=top_k,
             expr=f"chat_id == '{chat_id}'",
         )
@@ -394,7 +400,7 @@ def get_docs_by_file_id(file_id):
     milvusdb = get_milvusdb()
     docs = milvusdb.query(
         expr=f'file_id == "{file_id}"',
-        output_fields=["id", "source", "file_id", "text"],
+        output_fields=["id", "file_id", "text"],
     )
 
     return docs
@@ -407,6 +413,8 @@ def delete_docs_by_file_id(file_id):
         milvusdb.delete(
             expr=f'file_id == "{file_id}"',
         )
+        milvusdb.flush()
+        milvusdb.load()
         return True
     except Exception as e:
         return False

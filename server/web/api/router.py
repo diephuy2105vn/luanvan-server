@@ -6,7 +6,8 @@ from server.web.api.file import router as fileRouter
 from server.web.api.notification import router as notificationRouter
 from server.web.api.token import router as tokenRouter
 from server.web.api.user import router as userRouter
-
+from server.web.api.package import router as packageRouter
+from server.web.api.admin import router as adminRouter
 api_router = APIRouter()
 # api_router.include_router(adminRouter, prefix="/admin", tags=["Admin"])
 api_router.include_router(userRouter, prefix="/user", tags=["User"])
@@ -23,6 +24,7 @@ api_router.include_router(
     tags=["Chat history"],
 )
 
-# api_router.include_router(packageRouter, prefix="/package", tags=["Package"])
-
+api_router.include_router(packageRouter, prefix="/package", tags=["Package"])
+api_router.include_router(adminRouter, prefix="/admin", tags=["Admin"])
 api_router.include_router(tokenRouter, prefix="/token", tags=["Token"])
+

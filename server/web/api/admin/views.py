@@ -88,15 +88,37 @@ async def get_users(
             pack = await packages_collection.find_one(
                 {"_id": ObjectId(latest_order["package_id"])},
             )
+            
         else:
             pack = await packages_collection.find_one({"type": "PACKAGE_FREE"})
-
+        pack["_id"] = str(pack["_id"])
         user_responses.append(UserResponse(**user, pack=pack))
 
     return ListDataResponse(
         total=total_users,
         data=user_responses,
     )
+
+
+@router.delete("/user/{user_id}", response_model=dict)
+async def delete_order(
+    current_admin: Annotated[User, Depends(get_current_active_admin)],
+    user_id: str,
+):
+    db = get_db()
+    users_collection = db.get_collection("users")
+
+    existing_user = await users_collection.find_one({"_id": ObjectId(user_id)})
+
+    if not existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    await users_collection.delete_one({"_id": ObjectId(user_id)})
+
+    return {"detail": "Order deleted successfully"}
 
 
 @router.get("/file", response_model=ListDataResponse[FileSchema])
@@ -136,9 +158,12 @@ async def get_all_files(
             .to_list(length=None)
         )
 
+        total_size = sum(file['size'] for file in files) 
+
         return ListDataResponse(
             total=total_files,
             data=[FileSchema(**file) for file in files],
+            capacity=total_size
         )
     except Exception as e:
         raise HTTPException(
@@ -166,7 +191,7 @@ async def get_orders_by_date(
     db = get_db()
     orders_collection = db.get_collection("orders")
     packages_collection = db.get_collection("packages")
-
+    users_collection = db.get_collection("users")
     search_filter = {}
 
     if start_date and end_date:
@@ -191,7 +216,13 @@ async def get_orders_by_date(
         package = await packages_collection.find_one(
             {"_id": ObjectId(order["package_id"])},
         )
-        order_responses.append(OrderResponse(**order, pack=package))
+        user = await users_collection.find_one({"_id": ObjectId(order["user_id"])},)
+        if user :
+            order_responses.append(OrderResponse(**order, pack=package, user_info=UserResponse(**user)))
+        else:
+            order_responses.append(OrderResponse(**order, pack=package, user_info=None))
+
+        
 
     return ListDataResponse(
         total=total_orders,

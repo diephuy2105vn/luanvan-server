@@ -43,7 +43,7 @@ router = APIRouter()
 
 @router.get("/", response_model=ListDataResponse[BotResponse])
 async def get_bots_by_user(
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User , Depends(get_current_active_user)],
     page: int = Query(Pagination.PAGE_DEFAULT, ge=1, description="Page number"),
     size_page: int = Query(
         Pagination.SIZE_PAGE_DEFAULT,
@@ -51,20 +51,22 @@ async def get_bots_by_user(
         le=20,
         description="Page size",
     ),
+    name: str = Query(None, description="Name of the bot to search for") 
 ):
     db = get_db()
     bots_collection = db.get_collection("bots")
 
+    search_query = {"list_user_permission": {"$elemMatch": {"user_id": current_user.id, "confirm": True}}}
+    
+    if name:
+        search_query["name"] = {"$regex": name, "$options": "i"}
+        
     # Đếm tổng số bots
-    total_bots = await bots_collection.count_documents(
-        {"list_user_permission": {"$elemMatch": {"user_id": current_user.id}}},
-    )
+    total_bots = await bots_collection.count_documents(search_query)
 
     # Tìm các bot có user_id trong list_user_permission
     bots_data = (
-        await bots_collection.find(
-            {"list_user_permission": {"$elemMatch": {"user_id": current_user.id}}},
-        )
+        await bots_collection.find(search_query)
         .skip((page - 1) * size_page)
         .limit(size_page)
         .to_list(length=None)
@@ -355,6 +357,7 @@ async def delete_bot(
 async def get_list_user_by_bot_id(
     current_user: Annotated[User, Depends(get_current_active_user)],
     bot_id: str,
+    username: str = Query(None, description="Name of the user to search for"),  
 ):
     bots_collection = get_db().get_collection("bots")
     users_collection = get_db().get_collection("users")
@@ -381,11 +384,17 @@ async def get_list_user_by_bot_id(
     list_user_permission_res: List[UserPermissionResponse] = []
 
     for user_permission in bot.list_user_permission:
+
         user = await users_collection.find_one(
             {"_id": ObjectId(user_permission.user_id)},
         )
+
+        user_response = UserResponse(**user)
+        if username is not None:
+            if user_response.username.lower().find(username.lower()) == -1:
+                continue
         user_permission_res = UserPermissionResponse(
-            user=UserResponse(**user),
+            user=user_response,
             permissions=user_permission.permissions,
             confirm=user_permission.confirm,
         )
@@ -592,17 +601,29 @@ async def delete_user_permission_by_bot_id(
 ):
     bots_collection = get_db().get_collection("bots")
 
-    existing_bot = await bots_collection.find_one(
-        {
-            "_id": ObjectId(bot_id),
-            "list_user_permission": {
-                "$elemMatch": {
-                    "user_id": str(current_user.id),
-                    "permissions": {"$in": [PermissionEnum.write_user]},
+    if user_id == current_user.id :
+        existing_bot = await bots_collection.find_one(
+            {
+                "_id": ObjectId(bot_id),
+                "list_user_permission": {
+                    "$elemMatch": {
+                        "user_id": str(current_user.id),
+                    },
                 },
             },
-        },
-    )
+        )
+    else: 
+        existing_bot = await bots_collection.find_one(
+            {
+                "_id": ObjectId(bot_id),
+                "list_user_permission": {
+                    "$elemMatch": {
+                        "user_id": str(current_user.id),
+                        "permissions": {"$in": [PermissionEnum.write_user]},
+                    },
+                },
+            },
+        )
 
     if not existing_bot:
         raise HTTPException(
@@ -636,9 +657,10 @@ async def delete_user_permission_by_bot_id(
 
 @router.get("/{bot_id}/list_file", response_model=ListDataResponse[FileSchema])
 async def get_list_file(
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User , Depends(get_current_active_user)],
     bot_id: str,
     page: int = Query(Pagination.PAGE_DEFAULT, ge=1, description="Page number"),
+    name: str = Query(None, description="Name of the file to search for"),  
     size_page: int = Query(
         Pagination.SIZE_PAGE_DEFAULT,
         ge=1,
@@ -649,7 +671,6 @@ async def get_list_file(
     bots_collection = get_db().get_collection("bots")
     files_collection = get_db().get_collection("files")
 
-    # Kiểm tra xem bot có tồn tại và người dùng hiện tại có quyền xem file hay không
     existing_bot = await bots_collection.find_one(
         {
             "_id": ObjectId(bot_id),
@@ -665,34 +686,30 @@ async def get_list_file(
     if not existing_bot:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bot not found or you does not have permission to edit files",
+            detail="Bot not found or you do not have permission to view files",
         )
 
-    total_files = await files_collection.count_documents(
-        {
-            "_id": {
-                "$in": [
-                    ObjectId(file_id) for file_id in existing_bot.get("list_files")
-                ],
-            },
+    search_query = {
+        "_id": {
+            "$in": [
+                ObjectId(file_id) for file_id in existing_bot.get("list_files", [])
+            ],
         },
-    )
+    }
+
+    if name:
+        search_query["name"] = {"$regex": name, "$options": "i"} 
+
+    total_files = await files_collection.count_documents(search_query)
 
     pipeline = [
         {
-            "$match": {
-                "_id": {
-                    "$in": [
-                        ObjectId(file_id)
-                        for file_id in existing_bot.get("list_files", [])
-                    ],
-                },
-            },
+            "$match": search_query,
         },
         {
             "$group": {
                 "_id": None,
-                "total_size": {"$sum": "$size"},  # Tổng kích thước
+                "total_size": {"$sum": "$size"}, 
             },
         },
     ]
@@ -702,13 +719,7 @@ async def get_list_file(
 
     pipeline = [
         {
-            "$match": {
-                "_id": {
-                    "$in": [
-                        ObjectId(file_id) for file_id in existing_bot.get("list_files")
-                    ],
-                },
-            },
+            "$match": search_query,
         },
         {"$addFields": {"owner": {"$toObjectId": "$owner"}}},
         {
@@ -745,9 +756,7 @@ async def upload_files_to_bot(
     files: List[UploadFile] = File(...),
 ):
     bots_collection = get_db().get_collection("bots")
-    packages_collection = get_db().get_collection("packages")
-    files_collection = get_db().get_collection("files")
-    orders_collection = get_db().get_collection("orders")
+
     # Kiểm tra xem bot có tồn tại và người dùng hiện tại có quyền xóa file hay không
     existing_bot = await bots_collection.find_one(
         {
@@ -796,9 +805,6 @@ async def add_files_to_bot(
     file_ids: List[str] = Body(...),  # Nhận danh sách file_ids
 ):
     bots_collection = get_db().get_collection("bots")
-    packages_collection = get_db().get_collection("packages")
-    files_collection = get_db().get_collection("files")
-    orders_collection = get_db().get_collection("orders")
 
     existing_bot = await bots_collection.find_one(
         {

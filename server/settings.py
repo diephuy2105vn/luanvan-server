@@ -3,7 +3,10 @@ from pathlib import Path
 from tempfile import gettempdir
 
 import dotenv
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
 
 dotenv.load_dotenv()  # Load environment variables from .env file
 TEMP_DIR = Path(gettempdir())
@@ -35,6 +38,7 @@ class Settings(BaseSettings):
 
     # Enable uvicorn reloading
     reload: bool = False
+    # google_application_credentials: str
     openai_api_key: str
     mongodb_url: str = "mongodb://localhost:27017/"
     milvus_db_username: str = "root"

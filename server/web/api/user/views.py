@@ -258,7 +258,16 @@ async def get_package_info(
         {"_id": ObjectId(latest_order["package_id"])},
     )
     if not existing_package:
-        raise HTTPException(status_code=404, detail="Package not found")
+        free_package = await package_collection.find_one({"type": "PACKAGE_FREE"})
+        if not free_package:
+            raise HTTPException(status_code=404, detail="Free package not found")
+
+        return UserPackageInfo(
+            pack=free_package,
+            registration_date=None,
+            expiration_date=None,
+            price=free_package.get("price", 0),  # Nếu package có giá trị price
+        )
 
     pack_info = UserPackageInfo(
         pack=existing_package,
