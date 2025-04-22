@@ -3,7 +3,7 @@ name: Deploy FastAPI Docker (Poetry) to EC2
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   deploy:
