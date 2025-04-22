@@ -1,25 +1,24 @@
-FROM python:3.11.4-slim-bullseye as base
+FROM python:3.11.4-slim-bullseye as prod
 
-ENV POETRY_VERSION=1.4.2
 
-# Install dependencies
-RUN apt-get update \
- && apt-get install -y curl build-essential \
- && curl -sSL https://install.python-poetry.org | python3 - \
- && ln -s /root/.local/bin/poetry /usr/local/bin/poetry \
- && poetry config virtualenvs.create false
+RUN pip install poetry==1.4.2
 
-# Copy and install dependencies
+# Configuring poetry
+RUN poetry config virtualenvs.create false
+
+# Copying requirements of a project
+COPY pyproject.toml poetry.lock /app/src/
 WORKDIR /app/src
-COPY pyproject.toml poetry.lock ./
+
+# Installing requirements
 RUN poetry install --only main
 
-# Copy source code
-COPY . .
+# Copying actuall application
+COPY . /app/src/
+RUN poetry install --only main
 
-FROM base as prod
-CMD ["python", "-m", "server"]
+CMD ["/usr/local/bin/python", "-m", "server"]
 
+FROM prod as dev
 
-FROM base as dev
 RUN poetry install

@@ -10,3 +10,5 @@ services:
       - .env
     environment:
       SERVER_HOST: 0.0.0.0
+    ports:
+      - "8000:8000"
