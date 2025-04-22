@@ -20,11 +20,10 @@ jobs:
 
     - name: Deploy to EC2 🚀
       run: |
-        if [ ! -d "code-chat" ]; then
-          git clone https://github.com/diephuy2105vn/luanvan-server.git
-        fi
-        
         ssh -o StrictHostKeyChecking=no -i my-key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          if [ ! -d "/home/ubuntu/code-chat" ]; then
+            git clone https://github.com/diephuy2105vn/luanvan-server.git /home/ubuntu/code-chat
+          fi
           cd /home/ubuntu/code-chat  # ← Thay bằng path project của bạn trên EC2
           git pull origin main
           docker-compose down
