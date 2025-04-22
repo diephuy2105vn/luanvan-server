@@ -28,9 +28,7 @@ jobs:
           git pull origin main
           
           if [ ! -f ".env" ]; then
-            echo "Tạo file .env"
-            cat > .env <<EOL             
-            EOL
+            touch .env
           fi
           
           docker-compose down
