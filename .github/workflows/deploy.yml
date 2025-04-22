@@ -1,0 +1,28 @@
+name: Deploy FastAPI Docker (Poetry) to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH key 🔐
+      run: |
+        echo "${{ secrets.EC2_KEY }}" | base64 -d > my-key.pem
+        chmod 400 my-key.pem
+
+    - name: Deploy to EC2 🚀
+      run: |
+        ssh -o StrictHostKeyChecking=no -i my-key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          cd /home/ubuntu/code-chat  # ← Thay bằng path project của bạn trên EC2
+          git pull origin main
+          docker-compose down
+          docker-compose up --build -d
+        EOF
