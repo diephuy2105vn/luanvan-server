@@ -1,0 +1,26 @@
+name: Deploy FastAPI Docker (Poetry) to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: SSH Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_KEY }}
+        script: |
+          cd your-project-folder
+          echo "SERVER_OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
+          echo "SERVER_VERSION=latest" >> .env
+
+          git pull origin main
+          docker-compose down
+          docker-compose --env-file .env up --build -d
