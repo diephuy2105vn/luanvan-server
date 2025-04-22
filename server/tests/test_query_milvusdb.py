@@ -10,18 +10,18 @@ from pymilvus import (
     utility,
 )
 
-from server.settings import settings
 
 load_dotenv()
 
 
 def connect_to_milvus():
+
     connections.connect(
-        user=settings.milvus_db_username,
-        password=settings.milvus_db_password,
-        host=settings.milvus_db_host,
-        port=settings.milvus_db_port,
-        db_name=settings.milvus_db_name,
+        user="root",
+        password="",
+        host="localhost",
+        port=19530,
+        db_name="default",
     )
 
 
@@ -48,7 +48,7 @@ def create_collection(collection_name):
             FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
             FieldSchema(name="file_id", dtype=DataType.VARCHAR, max_length=500),
             FieldSchema(name="file_name", dtype=DataType.VARCHAR, max_length=1000),
-            FieldSchema(name="chat_id", dtype=DataType.VARCHAR, max_length=500),
+            # FieldSchema(name="chat_id", dtype=DataType.VARCHAR, max_length=500),
         ]
 
         schema = CollectionSchema(fields=fields, description="File collection")

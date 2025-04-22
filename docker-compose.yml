@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: prod
+    image: code-chat-server:${SERVER_VERSION:-latest}
+    restart: always
+    env_file:
+      - .env
+    environment:
+      SERVER_HOST: 0.0.0.0

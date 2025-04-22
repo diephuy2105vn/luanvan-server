@@ -191,51 +191,51 @@ class SocketIOApp:
                 files = await files_collection.find({"_id": {"$in": [ObjectId(file_id) for file_id in file_ids]}}).to_list(length=None)
 
 
-                today = datetime.now()
+                # today = datetime.now()
 
-                latest_order = await order_collection.find_one(
-                    {
-                        "user_id": existing_bot.get("owner"),
-                        "expiration_date": {"$gte": today},
-                    },
-                    sort=[("order_date", -1)],
-                )
+                # latest_order = await order_collection.find_one(
+                #     {
+                #         "user_id": existing_bot.get("owner"),
+                #         "expiration_date": {"$gte": today},
+                #     },
+                #     sort=[("order_date", -1)],
+                # )
 
-                if not latest_order:
-                    existing_package = await package_collection.find_one({"type": "PACKAGE_FREE"})
+                # if not latest_order:
+                #     existing_package = await package_collection.find_one({"type": "PACKAGE_FREE"})
 
-                else: 
-                    existing_package = await package_collection.find_one(
-                    {"_id": ObjectId(latest_order["package_id"])},
-                )
+                # else: 
+                #     existing_package = await package_collection.find_one(
+                #     {"_id": ObjectId(latest_order["package_id"])},
+                # )
                     
-                if not existing_package:
-                    existing_package = await package_collection.find_one({"type": "PACKAGE_FREE"})
+                # if not existing_package:
+                #     existing_package = await package_collection.find_one({"type": "PACKAGE_FREE"})
 
-                total_size = sum(file.get("size", 0) for file in files)
-                if existing_package.get("capacity_bot") < total_size:
-                    await self.sio.emit(
-                       "message",
-                        {
-                            "message": {
-                                "answer": "Dịch vụ đã hết hạn. Vui lòng nâng cấp để tiếp tục sử dụng tính năng của trợ lý AI.",
-                            },
-                        },
-                    )
-                    return
+                # total_size = sum(file.get("size", 0) for file in files)
+                # if existing_package.get("capacity_bot") < total_size:
+                #     await self.sio.emit(
+                #        "message",
+                #         {
+                #             "message": {
+                #                 "answer": "Dịch vụ đã hết hạn. Vui lòng nâng cấp để tiếp tục sử dụng tính năng của trợ lý AI.",
+                #             },
+                #         },
+                #     )
+                #     return
                 
-                bots= await bots_collection.find({"owner" : existing_bot.get("owner")}).to_list(length=None)
+                # bots= await bots_collection.find({"owner" : existing_bot.get("owner")}).to_list(length=None)
 
-                if(len(bots) > existing_package.get("numBot")) :
-                    await self.sio.emit(
-                       "message",
-                        {
-                            "message": {
-                                "answer": "Dịch vụ đã hết hạn. Vui lòng nâng cấp để tiếp tục sử dụng tính năng của trợ lý AI.",
-                            },
-                        },
-                    )
-                    return
+                # if(len(bots) > existing_package.get("numBot")) :
+                #     await self.sio.emit(
+                #        "message",
+                #         {
+                #             "message": {
+                #                 "answer": "Dịch vụ đã hết hạn. Vui lòng nâng cấp để tiếp tục sử dụng tính năng của trợ lý AI.",
+                #             },
+                #         },
+                #     )
+                #     return
 
                 loop = asyncio.get_event_loop()
                 answer =  await fetch_answer_by_file_ids_and_chat_id(

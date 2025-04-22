@@ -20,14 +20,12 @@ from server.config.milvusdb import get_milvusdb
 from server.config.mongodb import get_db
 from server.web.api.file.schema import FileSchema, FileStatus
 
-from pymilvus import model
+
 import re
 
-sentence_transformer_ef = model.dense.SentenceTransformerEmbeddingFunction(
-    model_name='Alibaba-NLP/gte-multilingual-base',
-    device='cpu',
-    trust_remote_code=True
-)
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer("Alibaba-NLP/gte-multilingual-base",  trust_remote_code=True)
 
 
 
@@ -211,12 +209,12 @@ def split_content_to_sentences(content):
 
 async def model_encode_text(text):
     loop = asyncio.get_event_loop()
-    result =  await loop.run_in_executor(None, lambda: sentence_transformer_ef.encode_documents([text]))
+    result =  await loop.run_in_executor(None, lambda: model.encode([text]))
     return result[0]
 
 async def model_encode_texts(texts):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, lambda: sentence_transformer_ef.encode_documents(texts))
+    return await loop.run_in_executor(None, lambda: model.encode(texts))
 
 async def insert_to_milvus_by_file(file, chunks, vectors):
     db = get_milvusdb()
