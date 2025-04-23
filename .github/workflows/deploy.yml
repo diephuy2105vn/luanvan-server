@@ -29,7 +29,7 @@ jobs:
           
           if [ ! -f ".env" ]; then
             touch .env
-            
+            echo "SERVER_VERSION=latest" >> .env
           fi
           
           docker-compose down
