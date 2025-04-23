@@ -29,6 +29,7 @@ jobs:
           
           if [ ! -f ".env" ]; then
             touch .env
+            
           fi
           
           docker compose down
