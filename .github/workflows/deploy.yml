@@ -1,4 +1,4 @@
-name: Deploy FastAPI Docker (Poetry) to EC2
+name: Deploy FastAPI Docker (Poetry) to GCE VM
 
 on:
   push:
@@ -10,27 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: 📦 Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up SSH key 🔐
+    - name: 🔐 Setup SSH key
       run: |
-        echo "${{ secrets.EC2_KEY }}" | base64 -d > my-key.pem
-        chmod 400 my-key.pem
+        echo "${{ secrets.GCE_SSH_KEY }}" | base64 -d > gce_key.pem
+        chmod 400 gce_key.pem
 
-    - name: Deploy to EC2 🚀
+    - name: 🚀 Deploy to GCE VM
       run: |
-        ssh -o StrictHostKeyChecking=no -i my-key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          if [ ! -d "/home/ubuntu/code-chat" ]; then
-            git clone https://github.com/diephuy2105vn/luanvan-server.git /home/ubuntu/code-chat
-          fi
-          cd /home/ubuntu/code-chat
-          git pull origin main
+        ssh -o StrictHostKeyChecking=no -i gce_key.pem ${{ secrets.GCE_VM_USER }}@${{ secrets.GCE_VM_IP }} << 'EOF'
+          REPO_DIR="/home/${USER}/code-chat"
           
+          if [ ! -d "$REPO_DIR" ]; then
+            git clone https://github.com/diephuy2105vn/luanvan-server.git "$REPO_DIR"
+          fi
+
+          cd "$REPO_DIR"
+          git pull origin main
+
           if [ ! -f ".env" ]; then
             touch .env
           fi
-          
+
           docker-compose down
           docker-compose up --build -d
         EOF
