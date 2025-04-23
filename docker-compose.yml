@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: ./Dockerfile
       target: prod
-    image: code-chat-server:${SERVER_VERSION:-latest}
+    image: code-chat-server:latest
     restart: always
     env_file:
       - .env
