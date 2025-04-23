@@ -3,7 +3,7 @@ name: Deploy FastAPI Docker (Poetry) to Google Cloud
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   deploy:
