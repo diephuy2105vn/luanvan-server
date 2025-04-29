@@ -30,7 +30,7 @@ jobs:
             if [ ! -f ".env" ]; then
               touch .env
                   
-              echo "SERVER_MONGODB_URL=mongodb://${{ secrets.GCE_PRIVATE_IP:27017/"
+              echo "SERVER_MONGODB_URL=mongodb://${{ secrets.GCE_PRIVATE_IP }}:27017/"
               echo "SERVER_MILVUS_DB_USERNAME=${{ secrets.MILVUS_DB_USERNAME }}"
               echo "SERVER_MILVUS_DB_PASSWORD=${{ secrets.MILVUS_DB_PASSWORD }}"
               echo "SERVER_MILVUS_DB_HOST=${{ secrets.GCE_PRIVATE_IP }}"
