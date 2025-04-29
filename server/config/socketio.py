@@ -23,7 +23,7 @@ class ConnectedUser(BaseModel):
 class SocketIOApp:
     def __init__(self):
         self.sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
-        self.sio_app = socketio.ASGIApp(self.sio, socketio_path="/")
+        self.sio_app = socketio.ASGIApp(self.sio, socketio_path="")
         self.connected_users: List[ConnectedUser] = []
 
         self.register_events()
