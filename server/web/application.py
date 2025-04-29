@@ -51,5 +51,5 @@ def get_app() -> FastAPI:
     # Main router for the API.
     app.include_router(router=welcome_route, tags=["Welcome"])
     app.include_router(router=api_router)
-    app.mount("/", socketio_app.sio_app)
+    app.mount("/ws/", socketio_app.sio_app)
     return app
