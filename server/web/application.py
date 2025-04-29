@@ -46,7 +46,7 @@ def get_app() -> FastAPI:
 
     @welcome_route.get("/")
     def welcome():
-        return {"detail": "Welcome to code chat server"}
+        return {"detail": "Welcome to code chat server..."}
 
     # Main router for the API.
     app.include_router(router=welcome_route, tags=["Welcome"])
