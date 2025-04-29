@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     milvus_db_host: str = "localhost"
     milvus_db_port: int = 19530
     milvus_db_name: str = "default"
-    milvus_db_collection: str = "project_collection"
+    milvus_db_collection: str = "codechat_collection"
 
     # Current environment
     environment: str = "dev"

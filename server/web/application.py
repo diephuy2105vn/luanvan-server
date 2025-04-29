@@ -24,9 +24,9 @@ def get_app() -> FastAPI:
     app = FastAPI(
         title="Code Chat",
         version=metadata.version("server"),
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
         default_response_class=UJSONResponse,
     )
 
@@ -50,6 +50,6 @@ def get_app() -> FastAPI:
 
     # Main router for the API.
     app.include_router(router=welcome_route, tags=["Welcome"])
-    app.include_router(router=api_router, prefix="/api")
+    app.include_router(router=api_router)
     app.mount("/", socketio_app.sio_app)
     return app
