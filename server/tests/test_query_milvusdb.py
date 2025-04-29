@@ -48,7 +48,6 @@ def create_collection(collection_name):
             FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
             FieldSchema(name="file_id", dtype=DataType.VARCHAR, max_length=500),
             FieldSchema(name="file_name", dtype=DataType.VARCHAR, max_length=1000),
-            # FieldSchema(name="chat_id", dtype=DataType.VARCHAR, max_length=500),
         ]
 
         schema = CollectionSchema(fields=fields, description="File collection")
