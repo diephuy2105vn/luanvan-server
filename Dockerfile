@@ -1,6 +1,6 @@
 FROM python:3.11.4-slim-bullseye as prod
 
-
+RUN apt-get update && apt-get install -y tesseract-ocr
 RUN pip install poetry==1.4.2
 
 # Configuring poetry
